@@ -1,0 +1,409 @@
+# PIPELINE DEFINITION
+# Name: main-iris-classifier-pipeline
+# Description: The main Iris classifier pipeline.
+# Inputs:
+#    data_path: str [Default: '/data']
+components:
+  comp-create-step-get-metrics:
+    executorLabel: exec-create-step-get-metrics
+    inputDefinitions:
+      parameters:
+        base_image:
+          defaultValue: python:3.7
+          isOptional: true
+          parameterType: STRING
+        packages_to_install:
+          defaultValue:
+          - pandas==1.2.4
+          - numpy==1.21.0
+          - scikit-learn==0.24.2
+          isOptional: true
+          parameterType: LIST
+  comp-create-step-predict-on-test-data:
+    executorLabel: exec-create-step-predict-on-test-data
+    inputDefinitions:
+      parameters:
+        base_image:
+          defaultValue: python:3.11.3
+          isOptional: true
+          parameterType: STRING
+        packages_to_install:
+          defaultValue:
+          - pandas==1.5.3
+          - numpy==1.24.3
+          - scikit-learn==1.3.0
+          isOptional: true
+          parameterType: LIST
+  comp-create-step-predict-prob-on-test-data:
+    executorLabel: exec-create-step-predict-prob-on-test-data
+    inputDefinitions:
+      parameters:
+        base_image:
+          defaultValue: python:3.11.3
+          isOptional: true
+          parameterType: STRING
+        packages_to_install:
+          defaultValue:
+          - pandas==1.5.3
+          - numpy==1.24.3
+          - scikit-learn==1.3.0
+          isOptional: true
+          parameterType: LIST
+  comp-create-step-prepare-data:
+    executorLabel: exec-create-step-prepare-data
+    inputDefinitions:
+      parameters:
+        base_image:
+          defaultValue: python:3.11.3
+          isOptional: true
+          parameterType: STRING
+        packages_to_install:
+          defaultValue:
+          - pandas==1.5.3
+          - numpy==1.24.3
+          isOptional: true
+          parameterType: LIST
+  comp-create-step-train-test-split:
+    executorLabel: exec-create-step-train-test-split
+    inputDefinitions:
+      parameters:
+        base_image:
+          defaultValue: python:3.11.3
+          isOptional: true
+          parameterType: STRING
+        packages_to_install:
+          defaultValue:
+          - pandas==1.5.3
+          - numpy==1.24.3
+          - scikit-learn==1.3.0
+          isOptional: true
+          parameterType: LIST
+  comp-create-step-training-basic-classifier:
+    executorLabel: exec-create-step-training-basic-classifier
+    inputDefinitions:
+      parameters:
+        base_image:
+          defaultValue: python:3.11.3
+          isOptional: true
+          parameterType: STRING
+        packages_to_install:
+          defaultValue:
+          - pandas==1.5.3
+          - numpy==1.24.3
+          - scikit-learn==1.3.0
+          isOptional: true
+          parameterType: LIST
+  comp-data-prediction-pipeline:
+    dag:
+      tasks:
+        create-step-predict-prob-on-test-data:
+          cachingOptions:
+            enableCache: true
+          componentRef:
+            name: comp-create-step-predict-prob-on-test-data
+          taskInfo:
+            name: create-step-predict-prob-on-test-data
+  comp-data-preparation-pipeline:
+    dag:
+      tasks:
+        create-step-prepare-data:
+          cachingOptions:
+            enableCache: true
+          componentRef:
+            name: comp-create-step-prepare-data
+          taskInfo:
+            name: create-step-prepare-data
+  comp-metrics-pipeline:
+    dag:
+      tasks:
+        create-step-get-metrics:
+          cachingOptions:
+            enableCache: true
+          componentRef:
+            name: comp-create-step-get-metrics
+          taskInfo:
+            name: create-step-get-metrics
+  comp-test-data-prediction-pipeline:
+    dag:
+      tasks:
+        create-step-predict-on-test-data:
+          cachingOptions:
+            enableCache: true
+          componentRef:
+            name: comp-create-step-predict-on-test-data
+          taskInfo:
+            name: create-step-predict-on-test-data
+  comp-train-test-split-pipeline:
+    dag:
+      tasks:
+        create-step-train-test-split:
+          cachingOptions:
+            enableCache: true
+          componentRef:
+            name: comp-create-step-train-test-split
+          taskInfo:
+            name: create-step-train-test-split
+  comp-training-basic-classifier-pipeline:
+    dag:
+      tasks:
+        create-step-training-basic-classifier:
+          cachingOptions:
+            enableCache: true
+          componentRef:
+            name: comp-create-step-training-basic-classifier
+          taskInfo:
+            name: create-step-training-basic-classifier
+deploymentSpec:
+  executors:
+    exec-create-step-get-metrics:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - create_step_get_metrics
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet     --no-warn-script-location 'kfp==2.1.3'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef create_step_get_metrics(\n    base_image: str = 'python:3.7',\n\
+          \    packages_to_install: list = ['pandas==1.2.4', 'numpy==1.21.0', 'scikit-learn==0.24.2']\n\
+          ):\n    return get_metrics(base_image=base_image, packages_to_install=packages_to_install)\n\
+          \n"
+        image: python:3.7
+    exec-create-step-predict-on-test-data:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - create_step_predict_on_test_data
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet     --no-warn-script-location 'kfp==2.1.3'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef create_step_predict_on_test_data(\n    base_image: str = 'python:3.11.3',\n\
+          \    packages_to_install: list = ['pandas==1.5.3', 'numpy==1.24.3', 'scikit-learn==1.3.0']\n\
+          ):\n    return predict_on_test_data(base_image=base_image, packages_to_install=packages_to_install)\n\
+          \n"
+        image: python:3.7
+    exec-create-step-predict-prob-on-test-data:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - create_step_predict_prob_on_test_data
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet     --no-warn-script-location 'kfp==2.1.3'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef create_step_predict_prob_on_test_data(\n    base_image: str =\
+          \ 'python:3.11.3',\n    packages_to_install: list = ['pandas==1.5.3', 'numpy==1.24.3',\
+          \ 'scikit-learn==1.3.0']\n):\n    return predict_prob_on_test_data(base_image=base_image,\
+          \ packages_to_install=packages_to_install)\n\n"
+        image: python:3.7
+    exec-create-step-prepare-data:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - create_step_prepare_data
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet     --no-warn-script-location 'kfp==2.1.3'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef create_step_prepare_data(\n    base_image: str = 'python:3.11.3',\n\
+          \    packages_to_install: list = ['pandas==1.5.3', 'numpy==1.24.3']\n):\n\
+          \    return prepare_data(base_image=base_image, packages_to_install=packages_to_install)\n\
+          \n"
+        image: python:3.7
+    exec-create-step-train-test-split:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - create_step_train_test_split
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet     --no-warn-script-location 'kfp==2.1.3'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef create_step_train_test_split(\n    base_image: str = 'python:3.11.3',\n\
+          \    packages_to_install: list = ['pandas==1.5.3', 'numpy==1.24.3', 'scikit-learn==1.3.0']\n\
+          ):\n    return train_test_split(base_image=base_image, packages_to_install=packages_to_install)\n\
+          \n"
+        image: python:3.7
+    exec-create-step-training-basic-classifier:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - create_step_training_basic_classifier
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet     --no-warn-script-location 'kfp==2.1.3'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef create_step_training_basic_classifier(\n    base_image: str =\
+          \ 'python:3.11.3',\n    packages_to_install: list = ['pandas==1.5.3', 'numpy==1.24.3',\
+          \ 'scikit-learn==1.3.0']\n):\n    return training_basic_classifier(base_image=base_image,\
+          \ packages_to_install=packages_to_install)\n\n"
+        image: python:3.7
+pipelineInfo:
+  description: The main Iris classifier pipeline.
+  name: main-iris-classifier-pipeline
+root:
+  dag:
+    tasks:
+      data-prediction-pipeline:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-data-prediction-pipeline
+        dependentTasks:
+        - test-data-prediction-pipeline
+        taskInfo:
+          name: data-prediction-pipeline
+      data-preparation-pipeline:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-data-preparation-pipeline
+        taskInfo:
+          name: data-preparation-pipeline
+      metrics-pipeline:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-metrics-pipeline
+        dependentTasks:
+        - data-prediction-pipeline
+        taskInfo:
+          name: metrics-pipeline
+      test-data-prediction-pipeline:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-test-data-prediction-pipeline
+        dependentTasks:
+        - training-basic-classifier-pipeline
+        taskInfo:
+          name: test-data-prediction-pipeline
+      train-test-split-pipeline:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-train-test-split-pipeline
+        dependentTasks:
+        - data-preparation-pipeline
+        taskInfo:
+          name: train-test-split-pipeline
+      training-basic-classifier-pipeline:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-training-basic-classifier-pipeline
+        dependentTasks:
+        - train-test-split-pipeline
+        taskInfo:
+          name: training-basic-classifier-pipeline
+  inputDefinitions:
+    parameters:
+      data_path:
+        defaultValue: /data
+        isOptional: true
+        parameterType: STRING
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.1.3
